@@ -1,0 +1,18 @@
+{
+  "name": "mini-proxy",
+  "version": "0.1",
+  "description": "",
+  "main": "src/proxy.ts",
+  "scripts": {
+    "dev": "nodemon --watch src/**/*.ts --exec ts-node src/proxy.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^8.5.2",
+    "nodemon": "^1.14.3"
+  },
+  "dependencies": {
+    "restify": "^6.3.4"
+  }
+}
