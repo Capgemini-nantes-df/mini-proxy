@@ -109,23 +109,24 @@ export class MiniProxy {
 
     private sendRequest(requestInfo:RouteEndpoint, resolve:(data:any)=>void, error:(err:Error) => void):void{
         
-            var postRequest = https.request(requestInfo, (dataCallback) => {
-                dataCallback.setEncoding("utf8");
-                let body = "";      
-                dataCallback.on('data',(chunk) => {
-                    body += chunk;
-                });
-                dataCallback.on('end', ()=>{            
-                    resolve(body)
-                });
+
+        console.log(requestInfo);
+        var postRequest = https.request(requestInfo, (dataCallback) => {
+            dataCallback.setEncoding("utf8");
+            let body = "";      
+            dataCallback.on('data',(chunk) => {
+                body += chunk;
             });
+            dataCallback.on('end', ()=>{            
+                resolve(body)
+            });
+        });
 
-            if (requestInfo.data)
-                postRequest.write(requestInfo.data) /** ,"parents":["HOME"] */
+        if (requestInfo.data)
+            postRequest.write(requestInfo.data) /** ,"parents":["HOME"] */
 
-            postRequest.end();
-            postRequest.on('error', error);
-        
+        postRequest.end();
+        postRequest.on('error', error);    
     }
 
  
