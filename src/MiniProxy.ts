@@ -1,5 +1,7 @@
 import * as restify from "restify";
 import * as https from "https";
+import * as dom from "xmldom";
+import * as xpath from "xpath";
 import Logger from "./Logger";
 
 
@@ -16,6 +18,7 @@ export interface RouteOptions{
     querystring:any;
     endpoint:RouteEndpoint;
     cache:boolean;
+    xmlToData?:any;
     postprocess:(data:any)=>any;
 }
 
@@ -110,16 +113,24 @@ export class MiniProxy {
     private sendRequest(requestInfo:RouteEndpoint, resolve:(data:any)=>void, error:(err:Error) => void):void{
         
 
-        console.log(requestInfo);
-        var postRequest = https.request(requestInfo, (dataCallback) => {
-            dataCallback.setEncoding("utf8");
-            let body = "";      
-            dataCallback.on('data',(chunk) => {
-                body += chunk;
-            });
-            dataCallback.on('end', ()=>{            
-                resolve(body)
-            });
+        var postRequest = https.request(requestInfo, (response) => {
+            if (response.statusCode == 200){
+                response.setEncoding("utf8");
+                let body = "";      
+                response.on('data',(chunk) => {
+                    body += chunk;
+                });
+                response.on('end', ()=>{            
+                    resolve(body)
+                });
+            }else{
+                /*** Process redirect */
+                if (response.statusCode==301){
+                    let location = response.headers["location"] as string
+                    requestInfo.parseUrl(location);
+                    this.sendRequest(requestInfo,resolve, error);
+                }
+            }
         });
 
         if (requestInfo.data)
@@ -131,13 +142,16 @@ export class MiniProxy {
 
  
     private replaceVarsInStringByValue(str:string, values:any):string{
-        return str.replace(/\{\{(\w+)\}\}/gi, function(match, parensMatch) {
-            if (values[parensMatch] !== undefined) {
-              return values[parensMatch];
-            }
-            return match;
-          });
-
+        if (str)
+            return str.replace(/\{\{(\w+)\}\}/gi, function(match, parensMatch) {
+                if (values[parensMatch] !== undefined) {
+                return values[parensMatch];
+                }
+                return match;
+            });
+        else{
+            return str;
+        }
     }
 
 
@@ -159,6 +173,7 @@ export class MiniProxy {
             let endpoint = new RouteEndpoint(options.endpoint);
             endpoint.data = this.replaceVarsInStringByValue(endpoint.data, vars);
             endpoint.path = this.replaceVarsInStringByValue(endpoint.path||"", vars);
+            endpoint.path = this.replaceVarsInStringByValue(endpoint.path||"", req.params);
 
 
             /*** gestion du cache */
@@ -172,14 +187,45 @@ export class MiniProxy {
                 next();
             }else{
                 this.sendRequest(endpoint, (body) => {
-                    let data = options.postprocess(body);
+                    let data:any = {}
+
+                    if (options.xmlToData){
+                        var doc = new dom.DOMParser({
+                            errorHandler:(err:any) => {},
+                        }).parseFromString(body);
+
+                        for (let info of options.xmlToData){
+                            let xpathValue = info.xpath;
+                            let content = xpath.select(xpathValue, doc);
+
+                            if (content && content.length>0){
+                                if (info.postprocess)
+                                    data = info.postprocess(content, data);
+                                else
+                                    data = content.data;
+                            }else{
+                                console.log("Nothing found on "+xpathValue);
+                            }
+                        }
+                        data = options.postprocess(data);
+                    }else{
+                        data = options.postprocess(body);
+                    }
+
 
                     if (options.cache){
                         this.MEMORYCACHE[hash]=data;
-                    }                    
-                    Logger.log("Result from request : ["+hash+"] "+JSON.stringify(data).length+" bytes");
+                    }   
+                    
+                    try{
+                        Logger.log("Result from request : ["+hash+"] "+JSON.stringify(data).length+" bytes");
 
-                    res.send(data);
+                        res.send(data);
+                    }catch(e:any){
+                        res.send({});
+                        console.error(e);
+                    }
+
                     next();
                 },
                 (err)=>{

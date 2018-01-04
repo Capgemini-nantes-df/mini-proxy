@@ -6,7 +6,7 @@ let proxy = new MiniProxy({
     port:8081,
     corsOrigin:'*'
 });
-//console.log(routes);
+console.log(routes);
 
 for (let route of routes.routes){
     proxy.addRoute(<RouteOptions>route);

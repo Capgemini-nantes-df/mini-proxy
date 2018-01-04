@@ -13,6 +13,8 @@
     "nodemon": "^1.14.3"
   },
   "dependencies": {
-    "restify": "^6.3.4"
+    "restify": "^6.3.4",
+    "xmldom": "^0.1.27",
+    "xpath": "0.0.27"
   }
 }

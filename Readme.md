@@ -1,4 +1,4 @@
-# MiniProxy - proxyfy an api
+# MiniProxy - proxyfy an api or transform a web content to json
 
 ## Installation 
 
